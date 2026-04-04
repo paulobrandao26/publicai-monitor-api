@@ -13,21 +13,28 @@ export class PncpService {
     trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
     const dataInicial = this.formatarData(trintaDiasAtras);
 
-    const response = await axios.get(
-      `${this.baseUrl}/contratacoes/publicacao`,
-      {
+    const paginas = [1, 2, 3, 4, 5];
+
+    const requests = paginas.map((pagina) =>
+      axios.get(`${this.baseUrl}/contratacoes/publicacao`, {
         params: {
           dataInicial,
           dataFinal,
-          pagina: 1,
-          tamanhoPagina: 10,
+          pagina,
+          tamanhoPagina: 50,
           codigoModalidadeContratacao: 6,
-          q: palavra,
         },
-      },
+      }),
     );
 
-    return response.data.data;
+    const respostas = await Promise.all(requests);
+    const todas = respostas.flatMap((r) => r.data.data);
+
+    const filtradas = todas.filter((lic: any) =>
+      lic.objetoCompra?.toLowerCase().includes(palavra.toLowerCase()),
+    );
+
+    return filtradas.slice(0, 10);
   }
 
   private formatarData(data: Date): string {
