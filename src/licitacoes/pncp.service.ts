@@ -5,7 +5,7 @@ import axios from 'axios';
 export class PncpService {
   private readonly baseUrl = 'https://pncp.gov.br/api/consulta/v1';
 
-  async buscarLicitacoes(palavra: string) {
+  async buscarLicitacoes(palavra: string, pagina: number = 1) {
     const hoje = new Date();
     const dataFinal = this.formatarData(hoje);
 
@@ -13,22 +13,27 @@ export class PncpService {
     trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
     const dataInicial = this.formatarData(trintaDiasAtras);
 
-    const paginas = [1, 2, 3, 4, 5];
+    const offset = (pagina - 1) * 5;
+    const paginas = [1, 2, 3].map((p) => p + offset);
 
-    const requests = paginas.map((pagina) =>
-      axios.get(`${this.baseUrl}/contratacoes/publicacao`, {
-        params: {
-          dataInicial,
-          dataFinal,
-          pagina,
-          tamanhoPagina: 50,
-          codigoModalidadeContratacao: 6,
-        },
-      }),
+    const requests = paginas.map((p) =>
+      axios
+        .get(`${this.baseUrl}/contratacoes/publicacao`, {
+          params: {
+            dataInicial,
+            dataFinal,
+            pagina: p,
+            tamanhoPagina: 50,
+            codigoModalidadeContratacao: 6,
+          },
+        })
+        .catch(() => null),
     );
 
     const respostas = await Promise.all(requests);
-    const todas = respostas.flatMap((r) => r.data.data);
+    const todas = respostas
+      .filter((r) => r !== null)
+      .flatMap((r) => r.data.data);
 
     const filtradas = todas.filter((lic: any) =>
       lic.objetoCompra?.toLowerCase().includes(palavra.toLowerCase()),
